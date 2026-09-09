@@ -258,7 +258,7 @@ final class LaunchService: @unchecked Sendable {
             x87Runtime: x87Runtime,
             wowURL: wowExecutableURL,
             wineExecutablePath: wineExecutableURL.path,
-            settings: version.settings
+            version: version
         )
 
         return LaunchConfiguration(
@@ -456,7 +456,8 @@ final class LaunchService: @unchecked Sendable {
             + "(exit $_wowsilicon_status)"
     }
 
-    private func makeShellCommand(gameURL: URL, x87Runtime: BundledX87Runtime.ResolvedRuntime?, wowURL: URL, wineExecutablePath: String, settings: VersionSettings) -> String {
+    private func makeShellCommand(gameURL: URL, x87Runtime: BundledX87Runtime.ResolvedRuntime?, wowURL: URL, wineExecutablePath: String, version: GameVersion) -> String {
+        let settings = version.settings
         let game = shellQuote(gameURL.path)
         let wow = shellQuote(wowURL.path)
         let wine = shellQuote(wineExecutablePath)
@@ -474,7 +475,10 @@ final class LaunchService: @unchecked Sendable {
         )
         let vulkanDriver = vulkanDriverShellAssignment(for: settings.graphicsSettings)
         let baseEnv = "\(winePrefix) DYLD_LIBRARY_PATH=\(dyldLibraryPath)\(vulkanDriver) WINE_LARGE_ADDRESS_AWARE=1 WINEDLLOVERRIDES=\(shellQuote(dllOverride))\(outputDeviceOverride)\(inputDeviceOverride) WOWSILICON_SPATIAL_AUDIO_MODE=\(spatialAudioMode) WOWSILICON_NORMALIZE_AUDIO=\(normalizeAudio) MTL_HUD_ENABLED=\(mtlValue) MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS=1 DXVK_ASYNC=1"
-        let custom = BundledWineRuntime.shellEnvironmentAssignments(settings.environmentVariables)
+        let custom = BundledWineRuntime.shellEnvironmentAssignments(
+            settings.environmentVariables,
+            stabilizeANSIKeyboardLayout: version.isWorldOfWarcraft
+        )
         let envPart = custom.isEmpty ? baseEnv : "\(custom) \(baseEnv)"
 
         if let x87Runtime {
@@ -683,7 +687,10 @@ final class LaunchService: @unchecked Sendable {
         )
         let vulkanDriver = vulkanDriverShellAssignment(for: version.settings.graphicsSettings)
         let baseEnv = "\(winePrefix) DYLD_LIBRARY_PATH=\(dyldLibraryPath)\(vulkanDriver) WINE_D3D_CONFIG=renderer=vulkan WINE_LARGE_ADDRESS_AWARE=1 WINEDLLOVERRIDES=\(shellQuote(dllOverride))\(outputDeviceOverride)\(inputDeviceOverride) WOWSILICON_SPATIAL_AUDIO_MODE=\(spatialAudioMode) WOWSILICON_NORMALIZE_AUDIO=\(normalizeAudio) MTL_HUD_ENABLED=\(mtlValue) MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS=1 DXVK_ASYNC=1"
-        let custom = BundledWineRuntime.shellEnvironmentAssignments(version.settings.environmentVariables)
+        let custom = BundledWineRuntime.shellEnvironmentAssignments(
+            version.settings.environmentVariables,
+            stabilizeANSIKeyboardLayout: version.isWorldOfWarcraft
+        )
         let envPart = custom.isEmpty ? baseEnv : "\(custom) \(baseEnv)"
 
         let shellCommand = "cd \(launcherDir) && \(envPart) \(wine) \(exeName) --disable-gpu --in-process-gpu"
